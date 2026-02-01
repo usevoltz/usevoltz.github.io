@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voltz – Sign In</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #5cc6ff, #1e3fa9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .auth-container {
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(14px);
+      padding: 48px 40px;
+      border-radius: 24px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .auth-container img {
+      height: 52px;
+      margin-bottom: 32px;
+    }
+
+    .google-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 999px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      background: white;
+      color: #1e3fa9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .google-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .google-icon {
+      width: 20px;
+      height: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-container">
+    <img src="logo.png" alt="Voltz Logo" />
+
+    <button id="googleSignIn" class="google-btn">
+      <img class="google-icon" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" />
+      Sign in with Google
+    </button>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyALYK8m7jg_Uz5W1A_-OiQu2RizkB2fBxg",
+    authDomain: "voltz-auth-6351d.firebaseapp.com",
+    projectId: "voltz-auth-6351d",
+    storageBucket: "voltz-auth-6351d.firebasestorage.app",
+    messagingSenderId: "757192216528",
+    appId: "1:757192216528:web:79d7a6df8802397a2073d5"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+</script>
+
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    document.getElementById("googleSignIn").addEventListener("click", async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        console.log("User:", result.user);
+
+        // Redirect after login
+        window.location.href = "/dashboard.html";
+      } catch (error) {
+        console.error(error);
+        alert("Authentication failed");
+      }
+    });
+  </script>
+
+</body>
+</html>

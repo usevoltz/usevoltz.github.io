@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Voltz – Sign In</title>
+  <title>Voltz – Auth</title>
 
   <style>
     * {
@@ -84,47 +84,53 @@
 
   <!-- ✅ FIREBASE (WORKING SETUP) -->
   <script type="module">
-    // Firebase core
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+  import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithRedirect,
+    getRedirectResult,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
-    // Firebase Auth
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup
-    } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyALYK8m7jg_Uz5W1A_-OiQu2RizkB2fBxg",
+    authDomain: "voltz-auth-6351d.firebaseapp.com",
+    projectId: "voltz-auth-6351d",
+    storageBucket: "voltz-auth-6351d.firebasestorage.app",
+    messagingSenderId: "757192216528",
+    appId: "1:757192216528:web:79d7a6df8802397a2073d5"
+  };
 
-    // 🔥 Your Firebase config (exactly as provided)
-    const firebaseConfig = {
-      apiKey: "AIzaSyALYK8m7jg_Uz5W1A_-OiQu2RizkB2fBxg",
-      authDomain: "voltz-auth-6351d.firebaseapp.com",
-      projectId: "voltz-auth-6351d",
-      storageBucket: "voltz-auth-6351d.firebasestorage.app",
-      messagingSenderId: "757192216528",
-      appId: "1:757192216528:web:79d7a6df8802397a2073d5"
-    };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-
-    // Initialize Auth
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-
-    // Sign in handler
-    document.getElementById("googleSignIn").addEventListener("click", async () => {
-      try {
-        const result = await signInWithPopup(auth, provider);
-        console.log("Signed in:", result.user);
-
-        // Redirect after successful login
+  // ✅ Handle redirect result (CRITICAL)
+  getRedirectResult(auth)
+    .then((result) => {
+      if (result && result.user) {
+        console.log("Signed in after redirect:", result.user);
         window.location.href = "/dashboard.html";
-      } catch (error) {
-        console.error("Auth error:", error);
-        alert(error.message);
       }
+    })
+    .catch((error) => {
+      console.error("Redirect error:", error);
     });
-  </script>
+
+  // ✅ Fallback: if already signed in
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      window.location.href = "/dashboard.html";
+    }
+  });
+
+  // Start Google sign-in
+  document.getElementById("googleSignIn").addEventListener("click", () => {
+    signInWithRedirect(auth, provider);
+  });
+</script>
+
 
 </body>
 </html>

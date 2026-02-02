@@ -10,7 +10,7 @@ app.secret_key = "supersecretkey"
 # --- Configuration ---
 GITHUB_TOKEN = "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"
 GITHUB_USERNAME = "foreignbandss"
-GITHUB_REPO = "multi-user-websites"
+GITHUB_REPO = "pages"
 GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"
 
 creator = GitHubWebsiteCreator(GITHUB_TOKEN, GITHUB_USERNAME)

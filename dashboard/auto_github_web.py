@@ -6,8 +6,8 @@ GITHUB_API = "https://api.github.com"
 
 class GitHubWebsiteCreator:
     def __init__(self, token, username):
-        self.token = token
-        self.username = username
+        self.token = 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
+        self.username = foreignbandss
         self.headers = {"Authorization": f"token {self.token}"}
 
     # Create repo if it doesn't exist

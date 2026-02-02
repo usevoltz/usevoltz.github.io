@@ -17,8 +17,8 @@ input, button { margin:5px; padding:10px; font-size:16px; }
 
 <!-- Google Sign-In -->
 <div id="g_id_onload"
-     data-client_id="YOUR_GOOGLE_CLIENT_ID"
-     data-login_uri="/google_login"
+     data-client_id="961329435710-8em8oamovd45m21ot7v5aeoop3jf6lce.apps.googleusercontent.com"
+     data-callback="handleCredentialResponse"
      data-auto_prompt="false">
 </div>
 <div class="g_id_signin" data-type="standard"></div>
@@ -44,42 +44,28 @@ input, button { margin:5px; padding:10px; font-size:16px; }
 
 <script>
 const BACKEND_URL = "https://backend-u6to.onrender.com"; // your backend URL
-
-     function handleCredentialResponse(response) {
-    // The ID token from Google
-    const googleToken = response.credential;
-
-    // Send this token to your backend
-    fetch(`${BACKEND_URL}/save_project`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            google_token: googleToken,
-            project_name: "myproject",
-            files: [
-                {name: "index.html", content: "<h1>Hello</h1>"},
-                {name: "style.css", content: "body {color:red;}"}
-            ]
-        })
-    })
-    .then(res => res.json())
-    .then(data => console.log(data));
-}
-
-
 let files = [];
 let userLoggedIn = false;
+let googleToken = null;
 
+// Single Google credential callback
 function handleCredentialResponse(response){
-    fetch('/google_login',{
+    googleToken = response.credential;
+
+    // Verify token with backend
+    fetch(`${BACKEND_URL}/google_login`, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({credential:response.credential})
-    }).then(r=>r.json()).then(data=>{
-        if(data.status==='success'){
-            userLoggedIn=true;
-            document.getElementById('user-info').innerText="Signed in as: "+data.email;
-        } else alert("Google sign-in failed");
+        body: JSON.stringify({google_token: googleToken})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success'){
+            userLoggedIn = true;
+            document.getElementById('user-info').innerText = "Signed in as: "+data.email;
+        } else {
+            alert("Google sign-in failed: "+(data.error || "Unknown error"));
+        }
     });
 }
 
@@ -114,24 +100,28 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     if(!folderName){alert("Enter folder name"); return;}
     if(files.length===0){alert("No files to save"); return;}
 
-    const res=await fetch('/save_project',{
+    const res = await fetch(`${BACKEND_URL}/save_project`,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({folderName, files})
+        body:JSON.stringify({google_token: googleToken, project_name: folderName, files})
     });
-    const data=await res.json();
-    if(res.ok){alert("Saved! "+data.file_urls.join("\n")); files=[]; updateFilesList();}
-    else alert("Error: "+data.error);
+    const data = await res.json();
+    if(res.ok){alert("Saved! "+(data.file_urls||[]).join("\n")); files=[]; updateFilesList();}
+    else alert("Error: "+(data.error||"Unknown error"));
 });
 
 // Load projects
 document.getElementById('loadBtn').addEventListener('click', async ()=>{
     if(!userLoggedIn){alert("Sign in first"); return;}
-    const res=await fetch('/list_projects');
-    const data=await res.json();
+    const res = await fetch(`${BACKEND_URL}/list_projects`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({google_token: googleToken})
+    });
+    const data = await res.json();
     const div=document.getElementById('projectsList');
     div.innerHTML="<h4>My Projects:</h4>";
-    data.projects.forEach(p=>{
+    (data.projects||[]).forEach(p=>{
         const a=document.createElement('a');
         a.href=p.url;
         a.target="_blank";

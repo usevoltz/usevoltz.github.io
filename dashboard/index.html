@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-User GitHub Web Editor</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+body { font-family: Arial; background:#1e1e1e; color:#f0f0f0; text-align:center; }
+textarea { width:80%; height:200px; background:#2e2e2e; color:#f0f0f0; border:1px solid #444; padding:10px; font-family:monospace; margin:5px 0; }
+input, button { margin:5px; padding:10px; font-size:16px; }
+#filesList { text-align:left; width:80%; margin:auto; }
+</style>
+</head>
+<body>
+<h1>GitHub Multi-User Web Editor</h1>
+
+<!-- Google Sign-In -->
+<div id="g_id_onload"
+     data-client_id="YOUR_GOOGLE_CLIENT_ID"
+     data-login_uri="/google_login"
+     data-auto_prompt="false">
+</div>
+<div class="g_id_signin" data-type="standard"></div>
+<div id="user-info" style="margin:10px;"></div>
+
+<!-- Project -->
+<label>Project Folder / URL:</label><br>
+<input type="text" id="folderName" placeholder="myproject"><br>
+
+<!-- File Inputs -->
+<label>Add HTML File:</label>
+<input type="file" id="fileUpload" multiple><br>
+<label>Or write content:</label>
+<textarea id="htmlContent" placeholder="Type HTML here..."></textarea><br>
+<button id="addFileBtn">Add Current Text as File</button>
+
+<!-- Files list -->
+<div id="filesList"></div>
+
+<button id="saveBtn">Save Project</button>
+<button id="loadBtn">Load My Projects</button>
+<div id="projectsList"></div>
+
+<script>
+let files = [];
+let userLoggedIn = false;
+
+function handleCredentialResponse(response){
+    fetch('/google_login',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({credential:response.credential})
+    }).then(r=>r.json()).then(data=>{
+        if(data.status==='success'){
+            userLoggedIn=true;
+            document.getElementById('user-info').innerText="Signed in as: "+data.email;
+        } else alert("Google sign-in failed");
+    });
+}
+
+// Add current textarea as a file
+document.getElementById('addFileBtn').addEventListener('click',()=>{
+    const name = prompt("Enter file name (with .html):");
+    const content = document.getElementById('htmlContent').value;
+    if(!name || !content) return;
+    files.push({name, content});
+    updateFilesList();
+});
+
+function updateFilesList(){
+    const div=document.getElementById('filesList');
+    div.innerHTML="<h4>Files to save:</h4>";
+    files.forEach(f=>{div.innerHTML+=f.name+"<br>";});
+}
+
+// Add uploaded files
+document.getElementById('fileUpload').addEventListener('change', async (e)=>{
+    for(const file of e.target.files){
+        const text = await file.text();
+        files.push({name:file.name, content:text});
+    }
+    updateFilesList();
+});
+
+// Save project
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+    if(!userLoggedIn){alert("Sign in first"); return;}
+    const folderName=document.getElementById('folderName').value.trim();
+    if(!folderName){alert("Enter folder name"); return;}
+    if(files.length===0){alert("No files to save"); return;}
+
+    const res=await fetch('/save_project',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({folderName, files})
+    });
+    const data=await res.json();
+    if(res.ok){alert("Saved! "+data.file_urls.join("\n")); files=[]; updateFilesList();}
+    else alert("Error: "+data.error);
+});
+
+// Load projects
+document.getElementById('loadBtn').addEventListener('click', async ()=>{
+    if(!userLoggedIn){alert("Sign in first"); return;}
+    const res=await fetch('/list_projects');
+    const data=await res.json();
+    const div=document.getElementById('projectsList');
+    div.innerHTML="<h4>My Projects:</h4>";
+    data.projects.forEach(p=>{
+        const a=document.createElement('a');
+        a.href=p.url;
+        a.target="_blank";
+        a.innerText=p.name;
+        div.appendChild(a);
+        div.appendChild(document.createElement('br'));
+    });
+});
+</script>
+</body>
+</html>

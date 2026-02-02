@@ -45,6 +45,28 @@ input, button { margin:5px; padding:10px; font-size:16px; }
 <script>
 const BACKEND_URL = "https://backend-u6to.onrender.com"; // your backend URL
 
+     function handleCredentialResponse(response) {
+    // The ID token from Google
+    const googleToken = response.credential;
+
+    // Send this token to your backend
+    fetch(`${BACKEND_URL}/save_project`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            google_token: googleToken,
+            project_name: "myproject",
+            files: [
+                {name: "index.html", content: "<h1>Hello</h1>"},
+                {name: "style.css", content: "body {color:red;}"}
+            ]
+        })
+    })
+    .then(res => res.json())
+    .then(data => console.log(data));
+}
+
+
 let files = [];
 let userLoggedIn = false;
 

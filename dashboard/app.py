@@ -8,8 +8,8 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
 # --- Configuration ---
-GITHUB_TOKEN = "YOUR_GITHUB_TOKEN"
-GITHUB_USERNAME = "YOUR_GITHUB_USERNAME"
+GITHUB_TOKEN = "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"
+GITHUB_USERNAME = "foreignbandss"
 GITHUB_REPO = "multi-user-websites"
 GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"
 

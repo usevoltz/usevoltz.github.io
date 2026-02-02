@@ -111,7 +111,7 @@
     .then((result) => {
       if (result && result.user) {
         console.log("Signed in after redirect:", result.user);
-        window.location.href = "/dashboard.html";
+        window.location.href = "/dashboard";
       }
     })
     .catch((error) => {

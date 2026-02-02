@@ -40,6 +40,10 @@
       color: #1e3fa9;
       font-weight: 600;
       cursor: pointer;
+      text-decoration: none; /* For <a> */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
@@ -52,8 +56,10 @@
     main {
       display: flex;
       align-items: center;
+      justify-content: center;
       min-height: calc(100vh - 100px);
       padding: 0 32px;
+      text-align: center;
     }
 
     h1 {
@@ -67,10 +73,9 @@
 <body>
 
   <header>
-    <img src="logo.png" alt="Votz Logo" />
-    <button class="cta-button"<a href="/auth.html" class="cta-button">Get Started</a>
-</button>    
-
+    <img src="logo.png" alt="Voltz Logo" />
+    <!-- Fixed Get Started button -->
+    <a href="/auth.html" class="cta-button">Get Started</a>
   </header>
 
   <main>

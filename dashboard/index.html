@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Multi-User GitHub Web Editor</title>
+<title>Voltz DashBoard</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 body { font-family: Arial; background:#1e1e1e; color:#f0f0f0; text-align:center; }
@@ -43,6 +43,8 @@ input, button { margin:5px; padding:10px; font-size:16px; }
 <div id="projectsList"></div>
 
 <script>
+const BACKEND_URL = "https://backend-u6to.onrender.com"; // your backend URL
+
 let files = [];
 let userLoggedIn = false;
 

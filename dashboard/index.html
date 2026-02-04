@@ -1,130 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Voltz Dashboard</title>
-
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-
+<script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
 <style>
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #0f172a;
-  color: #e5e7eb;
-  display: flex;
-  height: 100vh;
-}
-
-/* Sidebar */
-#sidebar {
-  width: 260px;
-  background: #020617;
-  border-right: 1px solid #1e293b;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-}
-#userBox {
-  display: none;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-#userBox img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-}
-#fileList {
-  flex: 1;
-  overflow-y: auto;
-}
-.file {
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.file:hover { background: #1e293b; }
-.file.active { background: #2563eb; }
-
-/* Main */
-#main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-header {
-  padding: 16px;
-  border-bottom: 1px solid #1e293b;
-}
-
-/* Google button */
-#googleSignIn {
-  margin-top: 20px;
-}
+body { font-family: system-ui, sans-serif; background: #0f172a; color: #e5e7eb; display: flex; margin: 0; height: 100vh; }
+#sidebar { width: 300px; background: #020617; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+#userBox { display: none; align-items: center; gap: 10px; }
+#userBox img { width: 40px; border-radius: 50%; }
+#slug, #content { width: 100%; }
+#content { height: 150px; background: #111827; color: #fff; border: 1px solid #1e293b; padding: 8px; border-radius: 6px; resize: vertical; }
+#projectList { list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; }
+#projectList li { padding: 6px; cursor: pointer; border-radius: 4px; }
+#projectList li:hover { background: #1e293b; }
+#googleSignIn { margin-top: 20px; }
+.github-url { font-size: 0.9em; color: #60a5fa; word-break: break-all; margin-top: 4px; }
+button { cursor: pointer; border: none; background: #2563eb; color: #fff; padding: 6px 10px; border-radius: 4px; }
+button:hover { background: #1e40af; }
 </style>
 </head>
 <body>
 
 <div id="sidebar">
-  <!-- User info -->
   <div id="userBox">
-    <img id="userPic" src="" alt="User Picture">
+    <img id="userPic" />
     <span id="userName"></span>
   </div>
 
-  <!-- File list -->
-  <div id="fileList">
-    <div class="file">File 1</div>
-    <div class="file">File 2</div>
-  </div>
+  <input type="text" id="slug" placeholder="Project slug (e.g., hehe)">
+  <textarea id="content" placeholder="Project content"></textarea>
+  <button id="saveBtn">Save Project</button>
+  <button id="loadBtn">Load Projects</button>
+  <ul id="projectList"></ul>
 
-  <!-- Google Sign-In button -->
   <div id="googleSignIn"></div>
 </div>
 
-<div id="main">
-  <header>
-    <h1>Voltz Dashboard</h1>
-  </header>
-  <div id="content"></div>
+<div id="main" style="flex:1; padding:16px;">
+  <h1>Voltz Dashboard</h1>
+  <div id="status"></div>
 </div>
 
 <script>
+const BACKEND_URL = "https://YOUR_RENDER_BACKEND_URL"; // Replace with your Render backend URL
+let currentUser = null;
+
+// --- Google Login ---
 function handleCredentialResponse(response) {
-  // Decode the ID token
   const data = jwt_decode(response.credential);
+  currentUser = { id: data.sub, name: data.name, picture: data.picture, token: response.credential };
 
-  // Show user info
-  document.getElementById('userPic').src = data.picture;
-  document.getElementById('userName').innerText = data.name;
+  document.getElementById('userPic').src = currentUser.picture;
+  document.getElementById('userName').innerText = currentUser.name;
   document.getElementById('userBox').style.display = 'flex';
-
-  // Hide Google Sign-In button
   document.getElementById('googleSignIn').style.display = 'none';
+  showStatus("Signed in as " + currentUser.name);
 }
 
-// Initialize Google Sign-In
-window.onload = function () {
+window.onload = () => {
   google.accounts.id.initialize({
     client_id: '961329435710-8em8oamovd45m21ot7v5aeoop3jf6lce.apps.googleusercontent.com',
     callback: handleCredentialResponse
   });
-
-  google.accounts.id.renderButton(
-    document.getElementById('googleSignIn'),
-    { theme: 'outline', size: 'large', width: 200 }
-  );
-
-  google.accounts.id.prompt(); // Show the One Tap prompt
+  google.accounts.id.renderButton(document.getElementById('googleSignIn'), { theme: 'outline', size: 'large' });
 };
-</script>
 
-<!-- JWT decode library -->
-<script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
+// --- Helpers ---
+function showStatus(msg, error=false) {
+  const status = document.getElementById("status");
+  status.innerText = msg;
+  status.style.color = error ? "#f87171" : "#60a5fa";
+}
 
-</body>
-</html>
+// --- Save project ---
+document.getElementById('saveBtn').onclick = async () => {
+  if (!currentUser) return alert("Sign in first!");
+  const slug = document.getElementById('slug').value.trim();
+  const content = document.getElementById('content').value;
+  if (!slug || !content) return alert("Enter slug and content!");
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, content, google_token: currentUser.token })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showStatus(`Project saved! GitHub URL: ${data.github_url || "Not pushed"}`);
+      loadProjects(); // refresh project list automatically
+    } else {
+      showStatus(data.error || data.message, true);
+    }
+  } catch(e) { showStatus(e.message, true); }
+};
+
+// --- Load projects ---
+async function loadProjects() {
+  if (!currentUser) return alert("Sign in first!");
+  try {
+    const res = await fetch(`${BACKEND_URL}/projects`, {
+      headers: { "Authorization": `Bearer ${currentUser.token}` }
+    });
+    const projects = await res.json();
+    const list = docu

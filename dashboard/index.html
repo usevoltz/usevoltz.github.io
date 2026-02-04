@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Voltz Dashboard</title>
+
+<!-- Google Sign-In script -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
+
 <style>
 body { font-family: system-ui, sans-serif; background: #0f172a; color: #e5e7eb; display: flex; margin: 0; height: 100vh; }
 #sidebar { width: 300px; background: #020617; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
@@ -16,26 +19,30 @@ body { font-family: system-ui, sans-serif; background: #0f172a; color: #e5e7eb; 
 #projectList { list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; }
 #projectList li { padding: 6px; cursor: pointer; border-radius: 4px; }
 #projectList li:hover { background: #1e293b; }
-#googleSignIn { margin-top: 20px; }
+#googleSignIn { margin-top: 20px; display: block; }
 .github-url { font-size: 0.9em; color: #60a5fa; word-break: break-all; margin-top: 4px; }
 button { cursor: pointer; border: none; background: #2563eb; color: #fff; padding: 6px 10px; border-radius: 4px; }
 button:hover { background: #1e40af; }
+#status { margin-top: 10px; font-weight: bold; }
 </style>
 </head>
 <body>
 
 <div id="sidebar">
+  <!-- User info -->
   <div id="userBox">
     <img id="userPic" />
     <span id="userName"></span>
   </div>
 
+  <!-- Project editor -->
   <input type="text" id="slug" placeholder="Project slug (e.g., hehe)">
   <textarea id="content" placeholder="Project content"></textarea>
   <button id="saveBtn">Save Project</button>
   <button id="loadBtn">Load Projects</button>
   <ul id="projectList"></ul>
 
+  <!-- Google Sign-In button -->
   <div id="googleSignIn"></div>
 </div>
 
@@ -45,8 +52,15 @@ button:hover { background: #1e40af; }
 </div>
 
 <script>
-const BACKEND_URL = "https://YOUR_RENDER_BACKEND_URL"; // Replace with your Render backend URL
+const BACKEND_URL = "https://YOUR_RENDER_BACKEND_URL"; // <-- Replace with your Render backend URL
 let currentUser = null;
+
+// --- Helpers ---
+function showStatus(msg, error=false) {
+  const status = document.getElementById("status");
+  status.innerText = msg;
+  status.style.color = error ? "#f87171" : "#60a5fa";
+}
 
 // --- Google Login ---
 function handleCredentialResponse(response) {
@@ -60,22 +74,22 @@ function handleCredentialResponse(response) {
   showStatus("Signed in as " + currentUser.name);
 }
 
-window.onload = () => {
+// Initialize Google Sign-In button after page loads
+function initGoogle() {
   google.accounts.id.initialize({
     client_id: '961329435710-8em8oamovd45m21ot7v5aeoop3jf6lce.apps.googleusercontent.com',
     callback: handleCredentialResponse
   });
-  google.accounts.id.renderButton(document.getElementById('googleSignIn'), { theme: 'outline', size: 'large' });
-};
-
-// --- Helpers ---
-function showStatus(msg, error=false) {
-  const status = document.getElementById("status");
-  status.innerText = msg;
-  status.style.color = error ? "#f87171" : "#60a5fa";
+  google.accounts.id.renderButton(
+    document.getElementById('googleSignIn'),
+    { theme: 'outline', size: 'large', width: 250 }
+  );
+  google.accounts.id.prompt(); // optional: show one-tap
 }
 
-// --- Save project ---
+window.onload = initGoogle;
+
+// --- Save Project ---
 document.getElementById('saveBtn').onclick = async () => {
   if (!currentUser) return alert("Sign in first!");
   const slug = document.getElementById('slug').value.trim();
@@ -98,7 +112,7 @@ document.getElementById('saveBtn').onclick = async () => {
   } catch(e) { showStatus(e.message, true); }
 };
 
-// --- Load projects ---
+// --- Load Projects ---
 async function loadProjects() {
   if (!currentUser) return alert("Sign in first!");
   try {
@@ -106,4 +120,22 @@ async function loadProjects() {
       headers: { "Authorization": `Bearer ${currentUser.token}` }
     });
     const projects = await res.json();
-    const list = docu
+    const list = document.getElementById('projectList');
+    list.innerHTML = "";
+    projects.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = p.slug;
+
+      li.onclick = () => {
+        document.getElementById('slug').value = p.slug;
+        document.getElementById('content').value = p.content;
+      };
+      list.appendChild(li);
+    });
+  } catch(e) { showStatus(e.message, true); }
+}
+
+document.getElementById('loadBtn').onclick = loadProjects;
+</script>
+</body>
+</html>

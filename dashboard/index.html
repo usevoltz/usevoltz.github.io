@@ -41,7 +41,6 @@ body {
 #fileList {
   flex: 1;
   overflow-y: auto;
-  margin-top: 12px;
 }
 .file {
   padding: 8px 10px;
@@ -58,190 +57,74 @@ body {
   flex-direction: column;
 }
 header {
-  padding: 16px 24px;
-  border-bottom: 1px solid #1e293b;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-header input {
-  background: #020617;
-  border: 1px solid #1e293b;
-  color: #e5e7eb;
-  padding: 8px 12px;
-  border-radius: 8px;
-  flex: 1;
-}
-header button {
-  background: #2563eb;
-  border: none;
-  color: white;
-  padding: 8px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-header button:hover { background: #1d4ed8; }
-
-#editor {
-  flex: 1;
   padding: 16px;
+  border-bottom: 1px solid #1e293b;
 }
-textarea {
-  width: 100%;
-  height: 100%;
-  background: #020617;
-  border: 1px solid #1e293b;
-  color: #e5e7eb;
-  font-family: monospace;
-  font-size: 14px;
-  padding: 12px;
-  border-radius: 12px;
-  resize: none;
+
+/* Google button */
+#googleSignIn {
+  margin-top: 20px;
 }
 </style>
 </head>
-
 <body>
 
-<!-- Sidebar -->
 <div id="sidebar">
+  <!-- User info -->
   <div id="userBox">
-    <img id="userPic" />
-    <div>
-      <div id="userName"></div>
-      <small style="opacity:.6">Google account</small>
-    </div>
+    <img id="userPic" src="" alt="User Picture">
+    <span id="userName"></span>
   </div>
 
-  <button onclick="addFile()">+ New File</button>
-  <div id="fileList"></div>
-
-  <div id="gSignIn">
-    <div id="g_id_onload"
-      data-client_id="961329435710-8em8oamovd45m21ot7v5aeoop3jf6lce.apps.googleusercontent.com"
-      data-callback="handleCredentialResponse"
-      data-auto_prompt="false">
-    </div>
-    <div class="g_id_signin" data-type="standard"></div>
+  <!-- File list -->
+  <div id="fileList">
+    <div class="file">File 1</div>
+    <div class="file">File 2</div>
   </div>
+
+  <!-- Google Sign-In button -->
+  <div id="googleSignIn"></div>
 </div>
 
-<!-- Main -->
 <div id="main">
   <header>
-    <input id="projectName" placeholder="Project Folder / URL" />
-    <button onclick="saveProject()">Save Project</button>
-    <button onclick="loadProjects()">Load Projects</button>
+    <h1>Voltz Dashboard</h1>
   </header>
-  <div id="editor">
-    <textarea id="fileContent" placeholder="Select a file to edit..."></textarea>
-  </div>
+  <div id="content"></div>
 </div>
 
 <script>
-const BACKEND_URL = "https://backend-u6to.onrender.com"; // Replace with your backend
+function handleCredentialResponse(response) {
+  // Decode the ID token
+  const data = jwt_decode(response.credential);
 
-let googleToken = null;
-let userLoggedIn = false;
-let files = [];
-let currentFileIndex = -1;
+  // Show user info
+  document.getElementById('userPic').src = data.picture;
+  document.getElementById('userName').innerText = data.name;
+  document.getElementById('userBox').style.display = 'flex';
 
-// Google login callback
-function handleCredentialResponse(response){
-  googleToken = response.credential;
+  // Hide Google Sign-In button
+  document.getElementById('googleSignIn').style.display = 'none';
+}
 
-  fetch(`${BACKEND_URL}/google_login`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({google_token: googleToken})
-  })
-  .then(r=>r.json())
-  .then(data=>{
-    if(data.status === 'success'){
-      userLoggedIn = true;
-      document.getElementById('userBox').style.display='flex';
-      document.getElementById('userName').innerText = data.name || data.email;
-      if(data.picture) document.getElementById('userPic').src = data.picture;
-    } else {
-      alert("Google login failed: "+(data.error||"unknown"));
-    }
+// Initialize Google Sign-In
+window.onload = function () {
+  google.accounts.id.initialize({
+    client_id: 'YOUR_GOOGLE_CLIENT_ID', // replace with your client ID
+    callback: handleCredentialResponse
   });
-}
 
-// Add a new file
-function addFile(){
-  if(!userLoggedIn){ alert("Sign in first"); return; }
-  const name = prompt("Enter new file name (e.g. index.html):");
-  if(!name) return;
-  files.push({name, content:""});
-  currentFileIndex = files.length-1;
-  renderFileList();
-  loadCurrentFile();
-}
+  google.accounts.id.renderButton(
+    document.getElementById('googleSignIn'),
+    { theme: 'outline', size: 'large', width: 200 }
+  );
 
-// Render sidebar file list
-function renderFileList(){
-  const div = document.getElementById('fileList');
-  div.innerHTML = '';
-  files.forEach((f,i)=>{
-    const el = document.createElement('div');
-    el.className = 'file'+(i===currentFileIndex?' active':'');
-    el.innerText = f.name;
-    el.onclick = ()=>{currentFileIndex=i; loadCurrentFile(); renderFileList();}
-    div.appendChild(el);
-  });
-}
-
-// Load currently selected file into editor
-function loadCurrentFile(){
-  if(currentFileIndex <0 || !files[currentFileIndex]) return;
-  document.getElementById('fileContent').value = files[currentFileIndex].content;
-}
-
-// Save editor content into file array
-document.getElementById('fileContent').addEventListener('input', ()=>{
-  if(currentFileIndex>=0 && files[currentFileIndex]){
-    files[currentFileIndex].content = document.getElementById('fileContent').value;
-  }
-});
-
-// Save project
-function saveProject(){
-  if(!userLoggedIn){ alert("Sign in first"); return; }
-  const projectName = document.getElementById('projectName').value.trim();
-  if(!projectName){ alert("Enter project folder name"); return; }
-  if(files.length===0){ alert("Add at least one file"); return; }
-
-  fetch(`${BACKEND_URL}/save_project`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({google_token: googleToken, project_name: projectName, files})
-  })
-  .then(r=>r.json())
-  .then(data=>{
-    if(data.file_urls) alert("Saved!\n"+data.file_urls.join("\n"));
-    else alert("Error: "+(data.error||"unknown"));
-  });
-}
-
-// Load projects
-function loadProjects(){
-  if(!userLoggedIn){ alert("Sign in first"); return; }
-  fetch(`${BACKEND_URL}/list_projects`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({google_token: googleToken})
-  })
-  .then(r=>r.json())
-  .then(data=>{
-    if(!data.projects || !data.projects.length){ alert("No projects found"); return; }
-    const proj = prompt("Select a project:\n"+data.projects.map(p=>p.name).join("\n"));
-    const selected = data.projects.find(p=>p.name===proj);
-    if(!selected) return alert("Invalid project");
-    alert("Project loaded! You can add files manually now (backend doesn't send file contents).");
-  });
-}
+  google.accounts.id.prompt(); // Show the One Tap prompt
+};
 </script>
+
+<!-- JWT decode library -->
+<script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
 
 </body>
 </html>

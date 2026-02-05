@@ -17,11 +17,11 @@ body { display: flex; height: 100vh; background: #0f172a; color: #e5e7eb; }
 .file.active { background: #2563eb; }
 #main { flex: 1; display: flex; flex-direction: column; padding: 16px; }
 #editor { flex: 1; background: #1e293b; border-radius: 6px; padding: 8px; color:#e5e7eb; font-family: monospace; font-size: 14px; overflow-y:auto; white-space: pre-wrap; }
-header { display:flex; justify-content: space-between; align-items: center; margin-bottom:8px; }
-button { padding:6px 12px; border:none; border-radius:4px; cursor:pointer; background:#2563eb; color:white; margin-right:4px; }
+header { display:flex; justify-content: space-between; align-items: center; margin-bottom:8px; flex-wrap: wrap; }
+button { padding:6px 12px; border:none; border-radius:4px; cursor:pointer; background:#2563eb; color:white; margin-right:4px; margin-top:4px; }
 button:hover { background:#1e40af; }
-input { padding:6px 8px; border-radius:4px; border:none; margin-right:8px; width: 150px; }
-#controls { display:flex; align-items:center; }
+input[type=text] { padding:6px 8px; border-radius:4px; border:none; margin-right:4px; margin-top:4px; width:150px; }
+#controls { display:flex; flex-wrap: wrap; align-items:center; }
 </style>
 </head>
 <body>
@@ -32,16 +32,17 @@ input { padding:6px 8px; border-radius:4px; border:none; margin-right:8px; width
   </div>
   <div id="fileList"></div>
   <button id="newFileBtn">New File</button>
-  <input type="file" id="uploadFileInput" style="display:none;" />
   <button id="uploadFileBtn">Upload File</button>
+  <input type="file" id="uploadFileInput" style="display:none;" />
+  <button id="saveFilesSidebarBtn">Save Files to Sidebar</button>
 </div>
 <div id="main">
   <header>
     <div id="controls">
-      <input type="text" id="slugInput" placeholder="File name (slug)"/>
+      <input type="text" id="slugInput" placeholder="File name"/>
       <button id="loadBtn">Load</button>
       <button id="saveBtn">Save</button>
-      <button id="saveFileBtn">Save As</button>
+      <button id="saveAsBtn">Save As</button>
     </div>
     <div id="loginContainer"></div>
   </header>
@@ -51,156 +52,138 @@ input { padding:6px 8px; border-radius:4px; border:none; margin-right:8px; width
 <script>
 const BACKEND_URL = "https://your-render-service.onrender.com"; // Replace with your Render URL
 let googleToken = null;
-let projects = [];
-let activeSlug = null;
+let currentProject = null; // currently loaded project name
+let files = []; // files linked to current project
+let activeFile = null;
 
 // --- Google Sign In ---
-function handleCredentialResponse(response) {
+function handleCredentialResponse(response){
   googleToken = response.credential;
-  fetch(`${BACKEND_URL}/google_login`, {
-    method: "POST",
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({google_token: googleToken})
-  })
-  .then(res=>res.json())
-  .then(data=>{
-    if(data.status==="success"){
-      document.getElementById("userBox").style.display="flex";
-      document.getElementById("userImg").src = data.picture;
-      document.getElementById("userName").textContent = data.name;
-      document.getElementById("loginContainer").style.display="none";
-      loadProjects(); // fetch projects
+  fetch(`${BACKEND_URL}/google_login`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({google_token:googleToken})
+  }).then(res=>res.json()).then(data=>{
+    if(data.status==='success'){
+      document.getElementById('userBox').style.display='flex';
+      document.getElementById('userImg').src=data.picture;
+      document.getElementById('userName').textContent=data.name;
+      document.getElementById('loginContainer').style.display='none';
     }
   });
 }
 
 window.onload = function(){
   google.accounts.id.initialize({
-    client_id: "961329435710-8em8oamovd45m21ot7v5aeoop3jf6lce.apps.googleusercontent.com",
-    callback: handleCredentialResponse
+    client_id:"961329435710-8em8oamovd45m21ot7v5aeoop3jf6lce.apps.googleusercontent.com",
+    callback:handleCredentialResponse
   });
-  google.accounts.id.renderButton(
-    document.getElementById("loginContainer"),
-    { theme: "outline", size: "large" }
-  );
+  google.accounts.id.renderButton(document.getElementById("loginContainer"),{theme:"outline", size:"large"});
   google.accounts.id.prompt();
 };
 
-// --- Load projects from backend ---
-function loadProjects(){
-  fetch(`${BACKEND_URL}/projects`, {
-    headers: { 'Authorization': `Bearer ${googleToken}` }
-  })
-  .then(res=>res.json())
-  .then(data=>{
-    projects = data;
-    renderSidebar();
-  });
-}
-
-// --- Render Sidebar ---
+// --- Sidebar Rendering ---
 function renderSidebar(){
-  const fileList = document.getElementById("fileList");
-  fileList.innerHTML = "";
-  projects.forEach(p=>{
-    const div = document.createElement("div");
-    div.className="file";
-    div.textContent=p.slug;
-    if(p.slug===activeSlug) div.classList.add("active");
+  const fileList = document.getElementById('fileList');
+  fileList.innerHTML='';
+  files.forEach(f=>{
+    const div=document.createElement('div');
+    div.className='file';
+    div.textContent=f.slug;
+    if(f.slug===activeFile) div.classList.add('active');
     div.onclick=()=>{
-      activeSlug = p.slug;
-      document.getElementById("slugInput").value = p.slug;
-      document.getElementById("editor").textContent = p.content;
+      activeFile=f.slug;
+      document.getElementById('slugInput').value=f.slug;
+      document.getElementById('editor').textContent=f.content;
       renderSidebar();
     };
     fileList.appendChild(div);
   });
 }
 
-// --- Save / overwrite ---
-function saveProject(slug, content){
-  if(!slug || !googleToken) return alert("Sign in and pick a file name.");
-  fetch(`${BACKEND_URL}/projects`, {
-    method:"POST",
+// --- Save Project File ---
+function saveFile(slug, content){
+  if(!slug || !currentProject) return alert("Pick a file name and project first.");
+  fetch(`${BACKEND_URL}/projects`,{
+    method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({google_token: googleToken, slug, content})
-  })
-  .then(res=>res.json())
-  .then(data=>{
-    if(data.status==="success"){
-      const existing = projects.find(p=>p.slug===slug);
-      if(existing){
-        existing.content = content; // overwrite
-      } else {
-        projects.push({slug, content});
-      }
-      activeSlug = slug;
+    body:JSON.stringify({google_token:googleToken, project:currentProject, slug, content})
+  }).then(res=>res.json()).then(data=>{
+    if(data.status==='success'){
+      const existing = files.find(f=>f.slug===slug);
+      if(existing) existing.content = content;
+      else files.push({slug, content});
+      activeFile = slug;
       renderSidebar();
-      alert("Saved successfully!");
-    } else alert("Save failed!");
+      alert('Saved successfully!');
+    } else alert('Save failed!');
   });
 }
 
-// --- Load ---
-document.getElementById("loadBtn").onclick = ()=>{
-  const slug = document.getElementById("slugInput").value.trim();
-  const project = projects.find(p=>p.slug===slug);
-  if(project){
-    document.getElementById("editor").textContent = project.content;
-    activeSlug = slug;
+// --- Load File ---
+document.getElementById('loadBtn').onclick=()=>{
+  const slug = document.getElementById('slugInput').value.trim();
+  const file = files.find(f=>f.slug===slug);
+  if(file){
+    activeFile=slug;
+    document.getElementById('editor').textContent=file.content;
     renderSidebar();
-  } else alert("Project not found.");
+  } else alert("File not found in this project.");
 };
 
 // --- Save ---
-document.getElementById("saveBtn").onclick = ()=>{
-  let slug = document.getElementById("slugInput").value.trim();
+document.getElementById('saveBtn').onclick=()=>{
+  let slug=document.getElementById('slugInput').value.trim();
   if(!slug){
-    slug = prompt("Enter a file name to save:");
+    slug=prompt("Enter file name:");
     if(!slug) return;
-    document.getElementById("slugInput").value = slug;
+    document.getElementById('slugInput').value=slug;
   }
-  const content = document.getElementById("editor").textContent;
-  saveProject(slug, content);
+  const content=document.getElementById('editor').textContent;
+  saveFile(slug,content);
 };
 
-// --- Save As (always asks) ---
-document.getElementById("saveFileBtn").onclick = ()=>{
-  let slug = prompt("Enter a new file name to save as:");
+// --- Save As ---
+document.getElementById('saveAsBtn').onclick=()=>{
+  const slug=prompt("Save file as (with extension):");
   if(!slug) return;
-  document.getElementById("slugInput").value = slug;
-  const content = document.getElementById("editor").textContent;
-  saveProject(slug, content);
+  document.getElementById('slugInput').value=slug;
+  const content=document.getElementById('editor').textContent;
+  saveFile(slug,content);
 };
 
 // --- New File ---
-document.getElementById("newFileBtn").onclick = ()=>{
-  const slug = prompt("Enter new file name:");
+document.getElementById('newFileBtn').onclick=()=>{
+  const slug=prompt("Enter new file name:");
   if(!slug) return;
-  const exists = projects.find(p=>p.slug===slug);
-  if(exists) alert("File exists, it will be overwritten when you save.");
-  activeSlug = slug;
-  document.getElementById("slugInput").value = slug;
-  document.getElementById("editor").textContent = "// Your code here...";
+  activeFile=slug;
+  document.getElementById('slugInput').value=slug;
+  document.getElementById('editor').textContent='// Your code here...';
+  files.push({slug, content:'// Your code here...'});
   renderSidebar();
 };
 
 // --- Upload File ---
-document.getElementById("uploadFileBtn").onclick = ()=>{
-  document.getElementById("uploadFileInput").click();
-};
-document.getElementById("uploadFileInput").onchange = function(e){
-  const file = e.target.files[0];
+document.getElementById('uploadFileBtn').onclick=()=>document.getElementById('uploadFileInput').click();
+document.getElementById('uploadFileInput').onchange=function(e){
+  const file=e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    const slug = file.name;
-    const content = ev.target.result;
-    document.getElementById("slugInput").value = slug;
-    document.getElementById("editor").textContent = content;
-    saveProject(slug, content); // auto-save to backend
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const slug=file.name;
+    const content=ev.target.result;
+    activeFile=slug;
+    document.getElementById('slugInput').value=slug;
+    document.getElementById('editor').textContent=content;
+    saveFile(slug,content);
   };
-  reader.readAsText(file); // works for code and HTML; for images you could handle differently
+  reader.readAsText(file);
+};
+
+// --- Save Files to Sidebar ---
+document.getElementById('saveFilesSidebarBtn').onclick=()=>{
+  files.forEach(f=>saveFile(f.slug,f.content));
+  alert('All files saved to sidebar/project!');
 };
 </script>
 </body>

@@ -43,6 +43,7 @@ input[type=text] { padding:6px 8px; border-radius:4px; border:none; margin-right
       <button id="loadBtn">Load</button>
       <button id="saveBtn">Save</button>
       <button id="saveAsBtn">Save As</button>
+      <button id="deployBtn">Deploy To Voltz Pages</button>
     </div>
     <div id="loginContainer"></div>
   </header>
@@ -115,7 +116,6 @@ function saveFile(slug, content){
       else files.push({slug, content});
       activeFile = slug;
       renderSidebar();
-      alert('Saved successfully!');
     } else alert('Save failed!');
   });
 }
@@ -184,6 +184,28 @@ document.getElementById('uploadFileInput').onchange=function(e){
 document.getElementById('saveFilesSidebarBtn').onclick=()=>{
   files.forEach(f=>saveFile(f.slug,f.content));
   alert('All files saved to sidebar/project!');
+};
+
+// --- Deploy To Voltz Pages ---
+document.getElementById('deployBtn').onclick = ()=>{
+  if(!currentProject){
+    const projName = prompt("Enter project name for deployment:");
+    if(!projName) return;
+    currentProject = projName;
+  }
+
+  // Auto-save all files first
+  files.forEach(f=>saveFile(f.slug,f.content));
+
+  // Deploy via backend
+  fetch(`${BACKEND_URL}/deploy_github`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({google_token:googleToken, project:currentProject, files})
+  }).then(res=>res.json()).then(data=>{
+    if(data.status==='success') alert(`Project "${currentProject}" deployed to Voltz Pages!`);
+    else alert("Deployment failed: "+(data.message || "Unknown error"));
+  });
 };
 </script>
 </body>

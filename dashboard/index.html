@@ -1,141 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Voltz Dashboard</title>
-
-<!-- Google Sign-In script -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
-
 <style>
-body { font-family: system-ui, sans-serif; background: #0f172a; color: #e5e7eb; display: flex; margin: 0; height: 100vh; }
-#sidebar { width: 300px; background: #020617; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-#userBox { display: none; align-items: center; gap: 10px; }
-#userBox img { width: 40px; border-radius: 50%; }
-#slug, #content { width: 100%; }
-#content { height: 150px; background: #111827; color: #fff; border: 1px solid #1e293b; padding: 8px; border-radius: 6px; resize: vertical; }
-#projectList { list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; }
-#projectList li { padding: 6px; cursor: pointer; border-radius: 4px; }
-#projectList li:hover { background: #1e293b; }
-#googleSignIn { margin-top: 20px; display: block; }
-.github-url { font-size: 0.9em; color: #60a5fa; word-break: break-all; margin-top: 4px; }
-button { cursor: pointer; border: none; background: #2563eb; color: #fff; padding: 6px 10px; border-radius: 4px; }
-button:hover { background: #1e40af; }
-#status { margin-top: 10px; font-weight: bold; }
+* { box-sizing: border-box; margin:0; padding:0; font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
+body { display: flex; height: 100vh; background: #0f172a; color: #e5e7eb; }
+#sidebar { width: 260px; background: #020617; border-right: 1px solid #1e293b; padding: 16px; display: flex; flex-direction: column; }
+#userBox { display: none; align-items: center; gap: 12px; margin-bottom: 20px; }
+#userBox img { width: 40px; height: 40px; border-radius: 50%; }
+#fileList { flex: 1; overflow-y: auto; }
+.file { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.file:hover { background: #1e293b; }
+.file.active { background: #2563eb; }
+#main { flex: 1; display: flex; flex-direction: column; padding: 16px; }
+#editor { flex: 1; background: #1e293b; border-radius: 6px; padding: 8px; color:#e5e7eb; font-family: monospace; font-size: 14px; overflow-y:auto; }
+header { display:flex; justify-content: space-between; align-items: center; margin-bottom:8px; }
+button { padding:6px 12px; border:none; border-radius:4px; cursor:pointer; background:#2563eb; color:white; }
+button:hover { background:#1e40af; }
+input { padding:6px 8px; border-radius:4px; border:none; margin-right:8px; width: 150px; }
 </style>
 </head>
 <body>
-
 <div id="sidebar">
-  <!-- User info -->
   <div id="userBox">
-    <img id="userPic" />
+    <img id="userImg" src="" alt="Profile"/>
     <span id="userName"></span>
   </div>
-
-  <!-- Project editor -->
-  <input type="text" id="slug" placeholder="Project slug (e.g., hehe)">
-  <textarea id="content" placeholder="Project content"></textarea>
-  <button id="saveBtn">Save Project</button>
-  <button id="loadBtn">Load Projects</button>
-  <ul id="projectList"></ul>
-
-  <!-- Google Sign-In button -->
-  <div id="googleSignIn"></div>
+  <div id="fileList"></div>
 </div>
-
-<div id="main" style="flex:1; padding:16px;">
-  <h1>Voltz Dashboard</h1>
-  <div id="status"></div>
+<div id="main">
+  <header>
+    <div>
+      <input type="text" id="slugInput" placeholder="Project slug (e.g., hehe)"/>
+      <button id="saveBtn">Save</button>
+    </div>
+    <div id="loginContainer"></div>
+  </header>
+  <div id="editor" contenteditable="true" spellcheck="false">// Your code here...</div>
 </div>
 
 <script>
-const BACKEND_URL = "https://YOUR_RENDER_BACKEND_URL"; // <-- Replace with your Render backend URL
-let currentUser = null;
+const BACKEND_URL = "https://your-render-service.onrender.com"; // Replace with your Render URL
+let googleToken = null;
+let projects = [];
+let activeSlug = null;
 
-// --- Helpers ---
-function showStatus(msg, error=false) {
-  const status = document.getElementById("status");
-  status.innerText = msg;
-  status.style.color = error ? "#f87171" : "#60a5fa";
-}
-
-// --- Google Login ---
+// --- Google Sign In ---
 function handleCredentialResponse(response) {
-  const data = jwt_decode(response.credential);
-  currentUser = { id: data.sub, name: data.name, picture: data.picture, token: response.credential };
-
-  document.getElementById('userPic').src = currentUser.picture;
-  document.getElementById('userName').innerText = currentUser.name;
-  document.getElementById('userBox').style.display = 'flex';
-  document.getElementById('googleSignIn').style.display = 'none';
-  showStatus("Signed in as " + currentUser.name);
+  googleToken = response.credential;
+  fetch(`${BACKEND_URL}/google_login`, {
+    method: "POST",
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({google_token: googleToken})
+  })
+  .then(res=>res.json())
+  .then(data=>{
+    if(data.status==="success"){
+      // Show profile picture + name
+      document.getElementById("userBox").style.display="flex";
+      document.getElementById("userImg").src = data.picture;
+      document.getElementById("userName").textContent = data.name;
+      // Hide Google button
+      document.getElementById("loginContainer").style.display="none";
+      // Load user's projects
+      loadProjects();
+    }
+  });
 }
 
-// Initialize Google Sign-In button after page loads
-function initGoogle() {
+window.onload = function(){
   google.accounts.id.initialize({
-    client_id: '961329435710-8em8oamovd45m21ot7v5aeoop3jf6lce.apps.googleusercontent.com',
+    client_id: "961329435710-8em8oamovd45m21ot7v5aeoop3jf6lce.apps.googleusercontent.com",
     callback: handleCredentialResponse
   });
   google.accounts.id.renderButton(
-    document.getElementById('googleSignIn'),
-    { theme: 'outline', size: 'large', width: 250 }
+    document.getElementById("loginContainer"),
+    { theme: "outline", size: "large" }
   );
-  google.accounts.id.prompt(); // optional: show one-tap
-}
-
-window.onload = initGoogle;
-
-// --- Save Project ---
-document.getElementById('saveBtn').onclick = async () => {
-  if (!currentUser) return alert("Sign in first!");
-  const slug = document.getElementById('slug').value.trim();
-  const content = document.getElementById('content').value;
-  if (!slug || !content) return alert("Enter slug and content!");
-
-  try {
-    const res = await fetch(`${BACKEND_URL}/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, content, google_token: currentUser.token })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      showStatus(`Project saved! GitHub URL: ${data.github_url || "Not pushed"}`);
-      loadProjects(); // refresh project list automatically
-    } else {
-      showStatus(data.error || data.message, true);
-    }
-  } catch(e) { showStatus(e.message, true); }
+  google.accounts.id.prompt(); // optional auto prompt
 };
 
 // --- Load Projects ---
-async function loadProjects() {
-  if (!currentUser) return alert("Sign in first!");
-  try {
-    const res = await fetch(`${BACKEND_URL}/projects`, {
-      headers: { "Authorization": `Bearer ${currentUser.token}` }
-    });
-    const projects = await res.json();
-    const list = document.getElementById('projectList');
-    list.innerHTML = "";
-    projects.forEach(p => {
-      const li = document.createElement('li');
-      li.textContent = p.slug;
-
-      li.onclick = () => {
-        document.getElementById('slug').value = p.slug;
-        document.getElementById('content').value = p.content;
-      };
-      list.appendChild(li);
-    });
-  } catch(e) { showStatus(e.message, true); }
+function loadProjects(){
+  fetch(`${BACKEND_URL}/projects`, {
+    headers: { 'Authorization': `Bearer ${googleToken}` }
+  })
+  .then(res=>res.json())
+  .then(data=>{
+    projects = data;
+    renderSidebar();
+  });
 }
 
-document.getElementById('loadBtn').onclick = loadProjects;
+// --- Render Sidebar ---
+function renderSidebar(){
+  const fileList = document.getElementById("fileList");
+  fileList.innerHTML = "";
+  projects.forEach(p=>{
+    const div = document.createElement("div");
+    div.className="file";
+    div.textContent=p.slug;
+    if(p.slug===activeSlug) div.classList.add("active");
+    div.onclick=()=>{
+      activeSlug=p.slug;
+      document.getElementById("slugInput").value=p.slug;
+      document.getElementById("editor").textContent=p.content;
+      renderSidebar();
+    };
+    fileList.appendChild(div);
+  });
+}
+
+// --- Save Button ---
+document.getElementById("saveBtn").onclick = ()=>{
+  const slug = document.getElementById("slugInput").value.trim();
+  const content = document.getElementById("editor").textContent;
+  if(!slug || !googleToken) return alert("Sign in and enter a slug.");
+  fetch(`${BACKEND_URL}/projects`, {
+    method:"POST",
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({google_token: googleToken, slug, content})
+  })
+  .then(res=>res.json())
+  .then(data=>{
+    if(data.status==="success"){
+      const existing = projects.find(p=>p.slug===slug);
+      if(existing) existing.content = content;
+      else projects.push({slug, content});
+      activeSlug = slug;
+      renderSidebar();
+      alert("Saved successfully!");
+    } else alert("Save failed.");
+  });
+};
 </script>
 </body>
 </html>

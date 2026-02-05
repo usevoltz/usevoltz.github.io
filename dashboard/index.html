@@ -53,8 +53,8 @@ input[type=text] { padding:6px 8px; border-radius:4px; border:none; margin-right
 <script>
 const BACKEND_URL = "https://your-render-service.onrender.com"; // Replace with your Render URL
 let googleToken = null;
-let currentProject = null; // currently loaded project name
-let files = []; // files linked to current project
+let currentProject = null;
+let files = [];
 let activeFile = null;
 
 // --- Google Sign In ---
@@ -108,7 +108,7 @@ function saveFile(slug, content){
   fetch(`${BACKEND_URL}/projects`,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({google_token:googleToken, project:currentProject, slug, content})
+    body:JSON.stringify({google_token: googleToken, project: currentProject, slug, content})
   }).then(res=>res.json()).then(data=>{
     if(data.status==='success'){
       const existing = files.find(f=>f.slug===slug);

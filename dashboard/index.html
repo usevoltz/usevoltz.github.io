@@ -18,9 +18,10 @@ body { display: flex; height: 100vh; background: #0f172a; color: #e5e7eb; }
 #main { flex: 1; display: flex; flex-direction: column; padding: 16px; }
 #editor { flex: 1; background: #1e293b; border-radius: 6px; padding: 8px; color:#e5e7eb; font-family: monospace; font-size: 14px; overflow-y:auto; }
 header { display:flex; justify-content: space-between; align-items: center; margin-bottom:8px; }
-button { padding:6px 12px; border:none; border-radius:4px; cursor:pointer; background:#2563eb; color:white; }
+button { padding:6px 12px; border:none; border-radius:4px; cursor:pointer; background:#2563eb; color:white; margin-right:4px; }
 button:hover { background:#1e40af; }
 input { padding:6px 8px; border-radius:4px; border:none; margin-right:8px; width: 150px; }
+#controls { display:flex; align-items:center; }
 </style>
 </head>
 <body>
@@ -33,8 +34,9 @@ input { padding:6px 8px; border-radius:4px; border:none; margin-right:8px; width
 </div>
 <div id="main">
   <header>
-    <div>
+    <div id="controls">
       <input type="text" id="slugInput" placeholder="Project slug (e.g., hehe)"/>
+      <button id="loadBtn">Load</button>
       <button id="saveBtn">Save</button>
     </div>
     <div id="loginContainer"></div>
@@ -59,14 +61,11 @@ function handleCredentialResponse(response) {
   .then(res=>res.json())
   .then(data=>{
     if(data.status==="success"){
-      // Show profile picture + name
       document.getElementById("userBox").style.display="flex";
       document.getElementById("userImg").src = data.picture;
       document.getElementById("userName").textContent = data.name;
-      // Hide Google button
       document.getElementById("loginContainer").style.display="none";
-      // Load user's projects
-      loadProjects();
+      loadProjects(); // fetch projects on login
     }
   });
 }
@@ -80,10 +79,10 @@ window.onload = function(){
     document.getElementById("loginContainer"),
     { theme: "outline", size: "large" }
   );
-  google.accounts.id.prompt(); // optional auto prompt
+  google.accounts.id.prompt();
 };
 
-// --- Load Projects ---
+// --- Load All Projects ---
 function loadProjects(){
   fetch(`${BACKEND_URL}/projects`, {
     headers: { 'Authorization': `Bearer ${googleToken}` }
@@ -105,36 +104,56 @@ function renderSidebar(){
     div.textContent=p.slug;
     if(p.slug===activeSlug) div.classList.add("active");
     div.onclick=()=>{
-      activeSlug=p.slug;
-      document.getElementById("slugInput").value=p.slug;
-      document.getElementById("editor").textContent=p.content;
+      activeSlug = p.slug;
+      document.getElementById("slugInput").value = p.slug;
+      document.getElementById("editor").textContent = p.content;
       renderSidebar();
     };
     fileList.appendChild(div);
   });
 }
 
-// --- Save Button ---
+// --- Save Project ---
 document.getElementById("saveBtn").onclick = ()=>{
   const slug = document.getElementById("slugInput").value.trim();
   const content = document.getElementById("editor").textContent;
   if(!slug || !googleToken) return alert("Sign in and enter a slug.");
+
   fetch(`${BACKEND_URL}/projects`, {
     method:"POST",
-    headers: {'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json'},
     body: JSON.stringify({google_token: googleToken, slug, content})
   })
   .then(res=>res.json())
   .then(data=>{
     if(data.status==="success"){
       const existing = projects.find(p=>p.slug===slug);
-      if(existing) existing.content = content;
-      else projects.push({slug, content});
+      if(existing){
+        existing.content = content; // auto-replace
+      } else {
+        projects.push({slug, content});
+      }
       activeSlug = slug;
       renderSidebar();
       alert("Saved successfully!");
-    } else alert("Save failed.");
+    } else {
+      alert("Save failed!");
+    }
   });
+};
+
+// --- Load Selected Project ---
+document.getElementById("loadBtn").onclick = ()=>{
+  const slug = document.getElementById("slugInput").value.trim();
+  if(!slug || !googleToken) return alert("Sign in and enter a slug.");
+  const project = projects.find(p=>p.slug===slug);
+  if(project){
+    document.getElementById("editor").textContent = project.content;
+    activeSlug = slug;
+    renderSidebar();
+  } else {
+    alert("Project not found. You can create it by typing content and clicking Save.");
+  }
 };
 </script>
 </body>

@@ -16,7 +16,7 @@ body { display: flex; height: 100vh; background: #0f172a; color: #e5e7eb; }
 .file:hover { background: #1e293b; }
 .file.active { background: #2563eb; }
 #main { flex: 1; display: flex; flex-direction: column; padding: 16px; }
-#editor { flex: 1; background: #1e293b; border-radius: 6px; padding: 8px; color:#e5e7eb; font-family: monospace; font-size: 14px; overflow-y:auto; }
+#editor { flex: 1; background: #1e293b; border-radius: 6px; padding: 8px; color:#e5e7eb; font-family: monospace; font-size: 14px; overflow-y:auto; white-space: pre-wrap; }
 header { display:flex; justify-content: space-between; align-items: center; margin-bottom:8px; }
 button { padding:6px 12px; border:none; border-radius:4px; cursor:pointer; background:#2563eb; color:white; margin-right:4px; }
 button:hover { background:#1e40af; }
@@ -32,13 +32,16 @@ input { padding:6px 8px; border-radius:4px; border:none; margin-right:8px; width
   </div>
   <div id="fileList"></div>
   <button id="newFileBtn">New File</button>
+  <input type="file" id="uploadFileInput" style="display:none;" />
+  <button id="uploadFileBtn">Upload File</button>
 </div>
 <div id="main">
   <header>
     <div id="controls">
-      <input type="text" id="slugInput" placeholder="Project slug"/>
+      <input type="text" id="slugInput" placeholder="File name (slug)"/>
       <button id="loadBtn">Load</button>
       <button id="saveBtn">Save</button>
+      <button id="saveFileBtn">Save As</button>
     </div>
     <div id="loginContainer"></div>
   </header>
@@ -66,7 +69,7 @@ function handleCredentialResponse(response) {
       document.getElementById("userImg").src = data.picture;
       document.getElementById("userName").textContent = data.name;
       document.getElementById("loginContainer").style.display="none";
-      loadProjects(); // Load existing projects
+      loadProjects(); // fetch projects
     }
   });
 }
@@ -83,7 +86,7 @@ window.onload = function(){
   google.accounts.id.prompt();
 };
 
-// --- Load all projects ---
+// --- Load projects from backend ---
 function loadProjects(){
   fetch(`${BACKEND_URL}/projects`, {
     headers: { 'Authorization': `Bearer ${googleToken}` }
@@ -114,12 +117,9 @@ function renderSidebar(){
   });
 }
 
-// --- Save Project ---
-document.getElementById("saveBtn").onclick = ()=>{
-  const slug = document.getElementById("slugInput").value.trim();
-  const content = document.getElementById("editor").textContent;
-  if(!slug || !googleToken) return alert("Sign in and enter a slug.");
-
+// --- Save / overwrite ---
+function saveProject(slug, content){
+  if(!slug || !googleToken) return alert("Sign in and pick a file name.");
   fetch(`${BACKEND_URL}/projects`, {
     method:"POST",
     headers:{'Content-Type':'application/json'},
@@ -130,44 +130,77 @@ document.getElementById("saveBtn").onclick = ()=>{
     if(data.status==="success"){
       const existing = projects.find(p=>p.slug===slug);
       if(existing){
-        existing.content = content; // auto-replace
+        existing.content = content; // overwrite
       } else {
         projects.push({slug, content});
       }
       activeSlug = slug;
       renderSidebar();
       alert("Saved successfully!");
-    } else {
-      alert("Save failed!");
-    }
+    } else alert("Save failed!");
   });
-};
+}
 
-// --- Load Selected Project ---
+// --- Load ---
 document.getElementById("loadBtn").onclick = ()=>{
   const slug = document.getElementById("slugInput").value.trim();
-  if(!slug || !googleToken) return alert("Sign in and enter a slug.");
   const project = projects.find(p=>p.slug===slug);
   if(project){
     document.getElementById("editor").textContent = project.content;
     activeSlug = slug;
     renderSidebar();
-  } else {
-    alert("Project not found. Create it by typing content and clicking Save.");
-  }
+  } else alert("Project not found.");
 };
 
-// --- New File Button ---
+// --- Save ---
+document.getElementById("saveBtn").onclick = ()=>{
+  let slug = document.getElementById("slugInput").value.trim();
+  if(!slug){
+    slug = prompt("Enter a file name to save:");
+    if(!slug) return;
+    document.getElementById("slugInput").value = slug;
+  }
+  const content = document.getElementById("editor").textContent;
+  saveProject(slug, content);
+};
+
+// --- Save As (always asks) ---
+document.getElementById("saveFileBtn").onclick = ()=>{
+  let slug = prompt("Enter a new file name to save as:");
+  if(!slug) return;
+  document.getElementById("slugInput").value = slug;
+  const content = document.getElementById("editor").textContent;
+  saveProject(slug, content);
+};
+
+// --- New File ---
 document.getElementById("newFileBtn").onclick = ()=>{
-  const slug = prompt("Enter new project name/slug:");
+  const slug = prompt("Enter new file name:");
   if(!slug) return;
   const exists = projects.find(p=>p.slug===slug);
-  if(exists) return alert("Project already exists. It will be overwritten when you save.");
-  projects.push({slug, content:"// Your code here..."});
+  if(exists) alert("File exists, it will be overwritten when you save.");
   activeSlug = slug;
   document.getElementById("slugInput").value = slug;
   document.getElementById("editor").textContent = "// Your code here...";
   renderSidebar();
+};
+
+// --- Upload File ---
+document.getElementById("uploadFileBtn").onclick = ()=>{
+  document.getElementById("uploadFileInput").click();
+};
+document.getElementById("uploadFileInput").onchange = function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const slug = file.name;
+    const content = ev.target.result;
+    document.getElementById("slugInput").value = slug;
+    document.getElementById("editor").textContent = content;
+    saveProject(slug, content); // auto-save to backend
+  };
+  reader.readAsText(file); // works for code and HTML; for images you could handle differently
 };
 </script>
 </body>

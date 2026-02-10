@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Voltz Public Server Instructions</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #0b1e3a, #3b8ed0);
+    color: #f0f0f0;
+    line-height: 1.6;
+  }
+
+  header {
+    text-align: center;
+    padding: 40px 20px 20px;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    color: #ffffff;
+    text-shadow: 1px 1px 5px rgba(0,0,0,0.3);
+  }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  h2 {
+    color: #d0e7ff;
+    margin-top: 40px;
+  }
+
+  p {
+    margin-bottom: 20px;
+  }
+
+  .code-block {
+    position: relative;
+    background: #1a1a1a;
+    color: #f5f5f5;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: Consolas, monospace;
+    margin-bottom: 20px;
+  }
+
+  .copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #3b8ed0;
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .copy-btn:hover {
+    background: #57a6e5;
+  }
+
+  footer {
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 0.9rem;
+    color: #c0c0c0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Voltz Public Server Instructions</h1>
+</header>
+
+<main>
+  <h2>Step 1 — Add The HTML</h2>
+  <p>Paste this where you want the proxy input and iframe to appear on your page:</p>
+  <div class="code-block">
+    <button class="copy-btn">Copy</button>
+<pre><code>&lt;input type="text" id="voltzUrlInput" placeholder="Enter URL"&gt;
+&lt;button onclick="loadVoltz()"&gt;Go&lt;/button&gt;
+
+&lt;iframe 
+  id="voltzFrame" 
+  style="width:100%; height:600px; border:none; border-radius:8px;"&gt;
+&lt;/iframe&gt;</code></pre>
+  </div>
+
+  <h2>Step 2 — Add The Script</h2>
+  <p>Paste this script at the bottom of your page before the <code>&lt;/body&gt;</code> tag:</p>
+  <div class="code-block">
+    <button class="copy-btn">Copy</button>
+<pre><code>&lt;script&gt;
+function normalizeURL(input) {
+  input = input.trim();
+  if (input.startsWith("http://") || input.startsWith("https://")) {
+    return input;
+  }
+  if (input.includes(".")) {
+    return "https://" + input;
+  }
+  return "https://www.bing.com/search?q=" + encodeURIComponent(input);
+}
+
+function loadVoltz() {
+  const input = document.getElementById("voltzUrlInput").value;
+  if (!input) return;
+  const finalURL = normalizeURL(input);
+  const encoded = encodeURIComponent(finalURL);
+  document.getElementById("voltzFrame").src =
+    "https://bnserverofficial.netlify.app/.netlify/functions/Voltz?url=" + encoded;
+}
+&lt;/script&gt;</code></pre>
+  </div>
+
+  <h2>Step 3 — Optional Direct Link</h2>
+  <p>If you want to load a specific site without a search box:</p>
+  <div class="code-block">
+    <button class="copy-btn">Copy</button>
+<pre><code>&lt;iframe 
+  src="https://bnserverofficial.netlify.app/.netlify/functions/Voltz?url=https://www.bing.com"
+  style="width:100%; height:600px; border:none;"&gt;
+&lt;/iframe&gt;</code></pre>
+  </div>
+
+  <h2>Step 4 — That’s It!</h2>
+  <p>Users can now type a URL, press Go, see the 5-second ad, and load the requested site via Voltz Public Server.</p>
+</main>
+
+<footer>
+  Powered by Voltz Public Server
+</footer>
+
+<script>
+// Copy button functionality
+document.querySelectorAll('.copy-btn').forEach(button => {
+  button.addEventListener('click', () => {
+    const code = button.nextElementSibling.innerText;
+    navigator.clipboard.writeText(code).then(() => {
+      button.innerText = 'Copied!';
+      setTimeout(() => button.innerText = 'Copy', 1500);
+    });
+  });
+});
+</script>
+
+</body>
+</html>
